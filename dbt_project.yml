@@ -1,0 +1,21 @@
+name: "restaurant_analytics_data_platform"
+version: "1.0.0"
+config-version: 2
+
+profile: "restaurant_analytics_data_platform"
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+log-path: "logs"
+target-path: "target"
+
+models:
+  restaurant_analytics_data_platform:
+    staging:
+      +materialized: view
+    public:
+      +materialized: table
+    marts:
+      +materialized: table

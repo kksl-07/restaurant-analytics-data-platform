@@ -1,0 +1,51 @@
+# macOS
+.DS_Store
+__MACOSX/
+
+# IDE
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.*
+
+# dbt
+target/
+dbt_packages/
+logs/
+!logs/.gitkeep
+
+# DuckDB
+.duckdb/*
+!.duckdb/.gitkeep
+
+# Generated raw data
+data/raw/*
+!data/raw/.gitkeep
+
+# Generated data
+data/generated/*
+!data/generated/.gitkeep
+
+# Generated outputs
+exports/cleaned/*
+!exports/cleaned/.gitkeep
+
+exports/marts/*
+!exports/marts/.gitkeep
+
+exports/reports/*
+!exports/reports/.gitkeep
+!exports/reports/summary_report.example.md
+
+# Temporary files
+*.tmp
+*.temp
+*.swp

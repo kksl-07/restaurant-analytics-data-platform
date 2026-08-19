@@ -1,0 +1,8 @@
+restaurant_analytics_data_platform:
+  target: dev
+
+  outputs:
+    dev:
+      type: duckdb
+      path: "/app/.duckdb/local.duckdb"
+      threads: 4

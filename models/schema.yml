@@ -1,0 +1,560 @@
+version: 2
+
+models:
+
+  # ============================================================
+  # STAGING
+  # ============================================================
+
+  - name: stg_restaurants
+    description: |
+      Raw-normalized restaurant source table.
+
+      This model reads the input `restaurants.parquet` file and applies basic
+      normalization steps such as column renaming, type casting, trimming of
+      string fields, and country standardization.
+
+      It should be considered a technical staging layer and not a business-facing table.
+
+    columns:
+      - name: restaurant_id
+        description: Unique identifier of the restaurant from the source dataset.
+        tests:
+          - not_null
+          - unique
+
+      - name: restaurant_name
+        description: Name of the restaurant after basic string normalization.
+        tests:
+          - not_null
+
+      - name: country
+        description: Country code or country name associated with the restaurant, normalized to uppercase.
+        tests:
+          - not_null
+
+      - name: city
+        description: City where the restaurant is located.
+
+      - name: cuisine_type
+        description: Restaurant cuisine category from the source dataset.
+
+      - name: price_range
+        description: Price positioning label of the restaurant, for example $, $$, or $$$.
+
+      - name: opened_date
+        description: Date when the restaurant was opened.
+
+      - name: is_active
+        description: Boolean flag indicating whether the restaurant is currently active.
+
+
+  - name: stg_users
+    description: |
+      Raw-normalized user source table.
+
+      This model reads the input `users.parquet` file and applies basic
+      type normalization and column renaming. It preserves the source-level
+      semantics while making the table easier to consume downstream.
+
+    columns:
+      - name: user_id
+        description: Unique identifier of the user from the source dataset.
+        tests:
+          - not_null
+          - unique
+
+      - name: user_created_at
+        description: Timestamp indicating when the user account was created.
+
+      - name: user_country
+        description: Country associated with the user, normalized to uppercase.
+
+      - name: marketing_opt_in
+        description: Boolean flag indicating whether the user opted in to marketing communications.
+
+
+  - name: stg_bookings
+    description: |
+      Raw-normalized bookings source table.
+
+      This model reads the input `bookings.parquet` file and standardizes
+      timestamps, identifiers, booking status values, and channel values.
+
+      It represents the technical staging version of booking events before
+      business validation is applied.
+
+    columns:
+      - name: booking_id
+        description: Unique identifier of the booking event.
+        tests:
+          - not_null
+          - unique
+
+      - name: booking_created_at
+        description: Timestamp when the booking was created.
+
+      - name: meal_at
+        description: Timestamp of the booked meal.
+
+      - name: restaurant_id
+        description: Identifier of the restaurant associated with the booking.
+        tests:
+          - not_null
+
+      - name: user_id
+        description: Identifier of the user who made the booking.
+        tests:
+          - not_null
+
+      - name: party_size
+        description: Number of guests included in the booking request.
+
+      - name: booking_status
+        description: Booking lifecycle status normalized to uppercase.
+
+      - name: channel
+        description: Booking acquisition channel normalized to lowercase, such as app or web.
+
+
+  - name: stg_payments
+    description: |
+      Raw-normalized payment source table.
+
+      This model reads the input `payments.parquet` file and applies
+      type normalization, uppercasing of currency and payment status,
+      and basic trimming of string fields.
+
+      It represents the technical staging layer for payment events before
+      business validation is applied.
+
+    columns:
+      - name: payment_id
+        description: Unique identifier of the payment record.
+        tests:
+          - not_null
+          - unique
+
+      - name: booking_id
+        description: Identifier of the booking associated with the payment.
+        tests:
+          - not_null
+
+      - name: restaurant_id
+        description: Identifier of the restaurant associated with the payment.
+        tests:
+          - not_null
+
+      - name: paid_at
+        description: Timestamp associated with the payment event.
+
+      - name: currency
+        description: Payment currency normalized to uppercase.
+
+      - name: gross_amount
+        description: Gross monetary amount of the payment.
+
+      - name: platform_fee
+        description: Platform fee associated with the payment.
+
+      - name: payment_status
+        description: Payment lifecycle status normalized to uppercase.
+
+
+  # ============================================================
+  # PUBLIC / CLEANED
+  # ============================================================
+
+  - name: pub_restaurants
+    description: |
+      Cleaned and business-facing restaurant table.
+
+      This model exposes validated restaurant records that are suitable for
+      analytics and downstream consumption. Invalid or incomplete records are removed.
+
+    columns:
+      - name: restaurant_id
+        description: Stable business key of the restaurant.
+        tests:
+          - not_null
+          - unique
+
+      - name: restaurant_name
+        description: Business-friendly name of the restaurant.
+        tests:
+          - not_null
+
+      - name: country
+        description: Country associated with the restaurant.
+        tests:
+          - not_null
+
+      - name: city
+        description: City associated with the restaurant.
+
+      - name: cuisine_type
+        description: Main cuisine classification of the restaurant.
+
+      - name: price_range
+        description: Price band of the restaurant.
+
+      - name: opened_date
+        description: Official opening date of the restaurant.
+
+      - name: is_active
+        description: Indicates whether the restaurant is currently active.
+
+
+  - name: pub_users
+    description: |
+      Cleaned and business-facing user table.
+
+      This model contains validated users that can be joined safely with booking activity.
+      It removes invalid user records while preserving the relevant analytical fields.
+
+    columns:
+      - name: user_id
+        description: Stable business key of the user.
+        tests:
+          - not_null
+          - unique
+
+      - name: user_created_at
+        description: Timestamp when the user profile was created.
+
+      - name: user_country
+        description: Country associated with the user.
+
+      - name: marketing_opt_in
+        description: Indicates whether the user opted in to marketing communications.
+
+
+  - name: pub_bookings
+    description: |
+      Cleaned and business-facing bookings table.
+
+      This model applies basic business validation rules to booking events:
+      records must have valid identifiers, positive party size, and a recognized booking status.
+
+      It is the main cleaned booking table used by downstream KPI models.
+
+    columns:
+      - name: booking_id
+        description: Stable business key of the booking.
+        tests:
+          - not_null
+          - unique
+
+      - name: booking_created_at
+        description: Timestamp when the booking was created.
+
+      - name: meal_at
+        description: Timestamp of the reserved meal.
+
+      - name: restaurant_id
+        description: Restaurant associated with the booking.
+        tests:
+          - not_null
+
+      - name: user_id
+        description: User associated with the booking.
+        tests:
+          - not_null
+
+      - name: party_size
+        description: Number of guests included in the booking.
+        tests:
+          - not_null
+
+      - name: booking_status
+        description: |
+          Validated booking lifecycle status.
+
+          Allowed values are:
+          - CANCELLED
+          - CONFIRMED
+          - CREATED
+          - FULFILLED
+          - NO_SHOW
+
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - CANCELLED
+                  - CONFIRMED
+                  - CREATED
+                  - FULFILLED
+                  - NO_SHOW
+
+      - name: channel
+        description: Booking acquisition channel, such as app or web.
+
+
+  - name: pub_payments
+    description: |
+      Cleaned and business-facing payment table.
+
+      This model filters invalid payment records and retains only payments
+      with valid identifiers, supported currencies, non-negative monetary
+      amounts, and recognized payment lifecycle statuses.
+
+      It is the main cleaned payment table used by downstream KPI models.
+
+    columns:
+      - name: payment_id
+        description: Stable business key of the payment.
+        tests:
+          - not_null
+          - unique
+
+      - name: booking_id
+        description: Booking associated with the payment.
+        tests:
+          - not_null
+
+      - name: restaurant_id
+        description: Restaurant associated with the payment.
+        tests:
+          - not_null
+
+      - name: paid_at
+        description: Timestamp associated with the payment event.
+
+      - name: currency
+        description: |
+          Validated payment currency.
+
+          Allowed values are:
+          - EUR
+          - GBP
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - EUR
+                  - GBP
+
+      - name: gross_amount
+        description: Gross monetary amount of the payment, required to be non-negative.
+        tests:
+          - not_null
+
+      - name: platform_fee
+        description: Platform fee associated with the payment, required to be non-negative.
+        tests:
+          - not_null
+
+      - name: payment_status
+        description: |
+          Validated payment lifecycle status.
+
+          Allowed values are:
+          - PAID
+          - FAILED
+          - REFUNDED
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - PAID
+                  - FAILED
+                  - REFUNDED
+
+
+  # ============================================================
+  # MARTS
+  # ============================================================
+
+  - name: mart_restaurant_kpis
+    description: |
+      Restaurant-level analytical mart combining booking and payment KPIs.
+
+      The model has one row per restaurant and includes booking lifecycle,
+      covers, payment, platform fee, merchant proceeds, and normalized
+      EUR/GBP revenue metrics.
+
+      Fixed FX rates are intentionally used to keep the project deterministic
+      and reproducible offline.
+
+    columns:
+
+      # -------------------------
+      # Restaurant dimensions
+      # -------------------------
+
+      - name: restaurant_id
+        description: Unique identifier of the restaurant.
+        tests:
+          - not_null
+          - unique
+
+      - name: restaurant_name
+        description: Name of the restaurant.
+        tests:
+          - not_null
+
+      - name: country
+        description: Country associated with the restaurant.
+
+      - name: city
+        description: City associated with the restaurant.
+
+      - name: cuisine_type
+        description: Main cuisine classification of the restaurant.
+
+      - name: price_range
+        description: Price positioning of the restaurant.
+
+
+      # -------------------------
+      # Booking KPIs
+      # -------------------------
+
+      - name: total_bookings
+        description: Total number of valid bookings associated with the restaurant.
+        tests:
+          - not_null
+
+      - name: confirmed_or_fulfilled_bookings
+        description: |
+          Number of bookings whose current lifecycle status is either
+          CONFIRMED or FULFILLED.
+        tests:
+          - not_null
+
+      - name: booking_cancellation_rate
+        description: |
+          Share of restaurant bookings whose current lifecycle status
+          is CANCELLED.
+        tests:
+          - not_null
+
+      - name: no_show_rate
+        description: |
+          Share of restaurant bookings whose current lifecycle status
+          is NO_SHOW.
+        tests:
+          - not_null
+
+      - name: booked_covers
+        description: |
+          Total party size across valid bookings associated with the restaurant.
+        tests:
+          - not_null
+
+      - name: fulfilled_covers
+        description: |
+          Total party size for bookings whose current lifecycle status
+          is FULFILLED.
+        tests:
+          - not_null
+
+      - name: unique_bookers
+        description: Number of distinct users associated with valid bookings for the restaurant.
+        tests:
+          - not_null
+
+
+      # -------------------------
+      # Payment KPIs
+      # -------------------------
+
+      - name: paid_bookings
+        description: Number of bookings with a PAID payment.
+        tests:
+          - not_null
+
+      - name: paid_bookings_eur
+        description: Number of bookings with a PAID payment originally denominated in EUR.
+        tests:
+          - not_null
+
+      - name: paid_bookings_gbp
+        description: Number of bookings with a PAID payment originally denominated in GBP.
+        tests:
+          - not_null
+
+
+      # -------------------------
+      # Original currency metrics
+      # -------------------------
+
+      - name: gross_revenue_eur
+        description: Gross value of PAID payments originally denominated in EUR.
+        tests:
+          - not_null
+
+      - name: gross_revenue_gbp
+        description: Gross value of PAID payments originally denominated in GBP.
+        tests:
+          - not_null
+
+      - name: platform_fee_eur
+        description: Platform fees from PAID payments originally denominated in EUR.
+        tests:
+          - not_null
+
+      - name: platform_fee_gbp
+        description: Platform fees from PAID payments originally denominated in GBP.
+        tests:
+          - not_null
+
+
+      # -------------------------
+      # Normalized currency metrics
+      # -------------------------
+
+      - name: total_gross_revenue_in_eur
+        description: |
+          Total gross value of PAID payments normalized to EUR
+          using the fixed project FX rate.
+        tests:
+          - not_null
+
+      - name: total_gross_revenue_in_gbp
+        description: |
+          Total gross value of PAID payments normalized to GBP
+          using the fixed project FX rate.
+        tests:
+          - not_null
+
+      - name: total_platform_fee_in_eur
+        description: |
+          Total platform fee from PAID payments normalized to EUR
+          using the fixed project FX rate.
+        tests:
+          - not_null
+
+      - name: total_platform_fee_in_gbp
+        description: |
+          Total platform fee from PAID payments normalized to GBP
+          using the fixed project FX rate.
+        tests:
+          - not_null
+
+      - name: merchant_proceeds_in_eur
+        description: |
+          Total amount payable to restaurants from PAID transactions
+          after deducting the platform fee, normalized to EUR.
+        tests:
+          - not_null
+
+      - name: merchant_proceeds_in_gbp
+        description: |
+          Total amount payable to restaurants from PAID transactions
+          after deducting the platform fee, normalized to GBP.
+        tests:
+          - not_null
+
+      - name: avg_paid_booking_value_in_eur
+        description: Average gross value of PAID bookings normalized to EUR.
+        tests:
+          - not_null
+
+      - name: avg_paid_booking_value_in_gbp
+        description: Average gross value of PAID bookings normalized to GBP.
+        tests:
+          - not_null
