@@ -79,7 +79,7 @@ run: build check-data
 # TEST
 # =========================
 
-test: build
+test: build check-data
 	docker run --rm \
 		-v "$$(pwd)/data:$(APP_DIR)/data" \
 		-v "$$(pwd)/exports:$(APP_DIR)/exports" \

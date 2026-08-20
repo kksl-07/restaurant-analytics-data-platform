@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
-set -e
 
-echo "==> dbt test"
-dbt test
+set -euo pipefail
+
+APP_DIR="/app"
+
+echo "==> Running dbt build"
+
+cd "${APP_DIR}"
+
+dbt build
+
+echo "==> Data quality checks completed successfully"

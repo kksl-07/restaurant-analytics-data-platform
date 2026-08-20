@@ -159,9 +159,10 @@ Generated datasets, DuckDB databases, logs, dbt artifacts, and analytical output
 
 ### Requirements
 
-The only runtime requirement is:
+The runtime requirements are:
 
 - Docker
+- Make
 
 Clone the repository and enter the project directory:
 
