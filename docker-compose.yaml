@@ -15,6 +15,13 @@ x-airflow-common: &airflow-common
     AIRFLOW__API_AUTH__JWT_SECRET: "restaurant-analytics-local-jwt-secret"
     AIRFLOW__API__SECRET_KEY: "restaurant-analytics-local-api-secret"
 
+    # Restaurant analytics runtime
+    DBT_PROFILES_DIR: /opt/restaurant-platform/profiles
+    DUCKDB_PATH: /opt/restaurant-platform/.duckdb/local.duckdb
+    RAW_DATA_PATH: /opt/restaurant-platform/data/raw
+    CLEANED_DATA_PATH: /opt/restaurant-platform/exports/cleaned
+    MARTS_DATA_PATH: /opt/restaurant-platform/exports/marts
+
   volumes:
     # Airflow
     - ./airflow/dags:/opt/airflow/dags
@@ -30,8 +37,9 @@ x-airflow-common: &airflow-common
     - ./scripts:/opt/restaurant-platform/scripts
     - ./profiles:/opt/restaurant-platform/profiles
     - ./tests:/opt/restaurant-platform/tests
+    - ./logs:/opt/restaurant-platform/logs
+    - ./target:/opt/restaurant-platform/target
     - ./dbt_project.yml:/opt/restaurant-platform/dbt_project.yml
-
   depends_on:
     postgres:
       condition: service_healthy

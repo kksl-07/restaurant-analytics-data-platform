@@ -1,7 +1,7 @@
 {{ config(
     post_hook="
       COPY (SELECT * FROM {{ this }})
-      TO '/app/exports/cleaned/payments_clean.csv'
+      TO '{{ var('cleaned_data_path') }}/payments_clean.csv'
       (FORMAT csv, HEADER, DELIMITER ',')
     "
 ) }}

@@ -3,7 +3,7 @@
     materialized='table',
     post_hook="
       COPY (SELECT * FROM {{ this }})
-      TO '/app/exports/marts/restaurant_kpis.csv'
+      TO '{{ var('marts_data_path') }}/restaurant_kpis.csv'
       (FORMAT csv, HEADER, DELIMITER ',')
     "
   )

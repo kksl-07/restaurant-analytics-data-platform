@@ -4,5 +4,5 @@ restaurant_analytics_data_platform:
   outputs:
     dev:
       type: duckdb
-      path: "/app/.duckdb/local.duckdb"
+      path: "{{ env_var('DUCKDB_PATH', '/app/.duckdb/local.duckdb') }}"
       threads: 4

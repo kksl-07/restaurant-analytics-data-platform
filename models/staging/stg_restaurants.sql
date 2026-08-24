@@ -7,4 +7,4 @@ select
     trim(price_range) as price_range,
     cast(opened_date as date) as opened_date,
     cast(is_active as boolean) as is_active
-from read_parquet('/app/data/raw/restaurants.parquet')
+from read_parquet('{{ var("raw_data_path") }}/restaurants.parquet')

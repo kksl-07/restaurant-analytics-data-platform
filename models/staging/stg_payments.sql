@@ -7,4 +7,4 @@ select
     cast(gross_amount as double) as gross_amount,
     cast(platform_fee as double) as platform_fee,
     upper(trim(payment_status)) as payment_status
-from read_parquet('/app/data/raw/payments.parquet')
+from read_parquet('{{ var("raw_data_path") }}/payments.parquet')
