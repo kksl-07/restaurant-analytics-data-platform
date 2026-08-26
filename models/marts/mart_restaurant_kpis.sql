@@ -1,14 +1,3 @@
-{{
-  config(
-    materialized='table',
-    post_hook="
-      COPY (SELECT * FROM {{ this }})
-      TO '/app/exports/marts/restaurant_kpis.csv'
-      (FORMAT csv, HEADER, DELIMITER ',')
-    "
-  )
-}}
-
 with fx_rates as (
     select
         1.17 as gbp_to_eur,

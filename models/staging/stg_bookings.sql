@@ -7,4 +7,4 @@ select
     cast(party_size as integer) as party_size,
     upper(trim(status)) as booking_status,
     lower(trim(channel)) as channel
-from read_parquet('/app/data/raw/bookings.parquet')
+from read_parquet('{{ var("raw_data_path") }}/bookings.parquet')
