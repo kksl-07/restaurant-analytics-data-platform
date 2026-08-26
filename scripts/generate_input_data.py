@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-
 # =========================
 # PATHS
 # =========================
@@ -15,9 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_DATA_PATH = PROJECT_ROOT / "data" / "raw"
 
-BASE_PATH = Path(
-    os.getenv("RAW_DATA_PATH", DEFAULT_DATA_PATH)
-)
+BASE_PATH = Path(os.getenv("RAW_DATA_PATH", DEFAULT_DATA_PATH))
 
 BASE_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -40,12 +37,8 @@ N_BOOKINGS = 500
 
 restaurants = pd.DataFrame(
     {
-        "restaurant_id": [
-            f"r{i}" for i in range(1, N_RESTAURANTS + 1)
-        ],
-        "name": [
-            f"Restaurant_{i}" for i in range(1, N_RESTAURANTS + 1)
-        ],
+        "restaurant_id": [f"r{i}" for i in range(1, N_RESTAURANTS + 1)],
+        "name": [f"Restaurant_{i}" for i in range(1, N_RESTAURANTS + 1)],
         "country": np.random.choice(
             ["IT", "FR", "DE", "ES"],
             N_RESTAURANTS,
@@ -84,9 +77,7 @@ restaurants = pd.DataFrame(
 
 users = pd.DataFrame(
     {
-        "user_id": [
-            f"u{i}" for i in range(1, N_USERS + 1)
-        ],
+        "user_id": [f"u{i}" for i in range(1, N_USERS + 1)],
         "created_at": (
             pd.to_datetime("2023-01-01")
             + pd.to_timedelta(
@@ -110,9 +101,7 @@ users = pd.DataFrame(
 # BOOKINGS
 # =========================
 
-booking_ids = [
-    f"b{i}" for i in range(1, N_BOOKINGS + 1)
-]
+booking_ids = [f"b{i}" for i in range(1, N_BOOKINGS + 1)]
 
 bookings = pd.DataFrame(
     {
@@ -178,9 +167,7 @@ currencies = np.random.choice(
 
 payments = pd.DataFrame(
     {
-        "payment_id": [
-            f"p{i}" for i in range(1, N_BOOKINGS + 1)
-        ],
+        "payment_id": [f"p{i}" for i in range(1, N_BOOKINGS + 1)],
         "booking_id": bookings["booking_id"],
         "restaurant_id": bookings["restaurant_id"],
         "paid_at": (
@@ -248,10 +235,7 @@ for dataset_name, dataframe in datasets.items():
         index=False,
     )
 
-    print(
-        f"Generated {output_path} "
-        f"({len(dataframe)} rows)"
-    )
+    print(f"Generated {output_path} ({len(dataframe)} rows)")
 
 
 # =========================

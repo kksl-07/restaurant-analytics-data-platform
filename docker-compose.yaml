@@ -21,6 +21,7 @@ x-airflow-common: &airflow-common
     RAW_DATA_PATH: /opt/restaurant-platform/data/raw
     CLEANED_DATA_PATH: /opt/restaurant-platform/exports/cleaned
     MARTS_DATA_PATH: /opt/restaurant-platform/exports/marts
+    REPORT_PATH: /opt/restaurant-platform/exports/reports/summary_report.md
 
   volumes:
     # Airflow

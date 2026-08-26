@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from airflow import DAG
 from airflow.providers.standard.operators.bash import BashOperator
 
+from airflow import DAG
 
 PROJECT_DIR = "/opt/restaurant-platform"
 
@@ -15,7 +15,6 @@ with DAG(
     max_active_runs=1,
     tags=["restaurant-analytics"],
 ) as dag:
-
     generate_raw_data = BashOperator(
         task_id="generate_raw_data",
         bash_command="python scripts/generate_input_data.py",
