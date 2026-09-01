@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    name: Validate project
+    runs-on: ubuntu-latest
+
+    env:
+      DUCKDB_PATH: ./.duckdb/local.duckdb
+      RAW_DATA_PATH: ./data/raw
+      CLEANED_DATA_PATH: ./exports/cleaned
+      MARTS_DATA_PATH: ./exports/marts
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run Ruff lint
+        run: ruff check .
+
+      - name: Check Ruff formatting
+        run: ruff format --check .
+
+      - name: Generate synthetic input data
+        run: python scripts/generate_input_data.py
+
+      - name: Run dbt build
+        run: dbt build --profiles-dir ./profiles
