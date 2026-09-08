@@ -12,9 +12,9 @@ log-path: "logs"
 target-path: "target"
 
 vars:
-  raw_data_path: "{{ env_var('RAW_DATA_PATH', '/app/data/raw') }}"
-  cleaned_data_path: "{{ env_var('CLEANED_DATA_PATH', '/app/exports/cleaned') }}"
-  marts_data_path: "{{ env_var('MARTS_DATA_PATH', '/app/exports/marts') }}"
+  raw_data_path: "{{ env_var('RAW_DATA_PATH', 'data/raw') }}"
+  cleaned_data_path: "{{ env_var('CLEANED_DATA_PATH', 'exports/cleaned') }}"
+  marts_data_path: "{{ env_var('MARTS_DATA_PATH', 'exports/marts') }}"
 
 models:
   restaurant_analytics_data_platform:
