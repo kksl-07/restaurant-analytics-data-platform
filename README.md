@@ -1,92 +1,141 @@
 # 🍽️ Restaurant Analytics Data Platform
 
-A reproducible end-to-end analytics data platform built with **Docker**, **dbt**, **DuckDB**, and **Python**.
+A reproducible end-to-end analytics data platform built with **Python, Parquet, DuckDB, dbt, Apache Airflow, Docker Compose, and GitHub Actions**.
 
-The project simulates a restaurant marketplace analytics workflow, from synthetic source data generation and data transformation to data quality validation, KPI modeling, exports, and report generation.
+The project simulates a restaurant marketplace analytics workflow, from deterministic synthetic source data generation to transformation, data quality validation, orchestration, analytics modeling, and downstream reporting.
 
-The goal is to demonstrate how a small analytics platform can be designed with clear data layers, reproducible execution, explicit business rules, automated testing, and documented architectural trade-offs.
+The platform is intentionally small and self-contained. Its purpose is to demonstrate production-oriented Data Engineering practices without introducing infrastructure that is not required by the workload.
+
+The core design focuses on:
+
+- layered analytical modeling with dbt
+- analytical processing with DuckDB
+- deterministic synthetic source data
+- data quality as a pipeline quality gate
+- workflow orchestration with Apache Airflow
+- reproducible local execution with Docker
+- automated CI validation with GitHub Actions
+- explicit architectural decisions and trade-offs
 
 ---
 
 ## 🏗️ Architecture
 
 ```text
-                         ┌─────────────────────┐
-                         │   Synthetic Data    │
-                         │      Generator      │
-                         │      (Python)       │
-                         └──────────┬──────────┘
+                         ┌──────────────────────┐
+                         │ Synthetic Data       │
+                         │ Generator            │
+                         │ Python               │
+                         └──────────┬───────────┘
                                     │
                                     ▼
-                         ┌─────────────────────┐
-                         │    Raw Parquet      │
-                         │                     │
-                         │ restaurants         │
-                         │ users               │
-                         │ bookings            │
-                         │ payments            │
-                         └──────────┬──────────┘
+                         ┌──────────────────────┐
+                         │ Raw Parquet          │
+                         │                      │
+                         │ restaurants          │
+                         │ users                │
+                         │ bookings             │
+                         │ payments             │
+                         └──────────┬───────────┘
                                     │
                                     ▼
-                         ┌─────────────────────┐
-                         │    dbt Staging      │
-                         │                     │
-                         │ type normalization  │
-                         │ naming cleanup      │
-                         │ basic standardization│
-                         └──────────┬──────────┘
+                         ┌──────────────────────┐
+                         │ dbt + DuckDB         │
+                         │                      │
+                         │ staging              │
+                         │ public               │
+                         │ marts                │
+                         │ data quality tests   │
+                         └──────────┬───────────┘
+                                    │
+                              dbt build SUCCESS
                                     │
                                     ▼
-                         ┌─────────────────────┐
-                         │    dbt Public       │
-                         │                     │
-                         │ validation          │
-                         │ business filtering  │
-                         │ cleaned datasets    │
-                         └──────────┬──────────┘
+                         ┌──────────────────────┐
+                         │ Validated Analytics  │
+                         │ Mart in DuckDB       │
+                         └──────────┬───────────┘
                                     │
                                     ▼
-                         ┌─────────────────────┐
-                         │      dbt Mart       │
-                         │                     │
-                         │ restaurant KPIs     │
-                         │ booking metrics     │
-                         │ revenue metrics     │
-                         └──────────┬──────────┘
+                         ┌──────────────────────┐
+                         │ generate_report.py   │
+                         │                      │
+                         │ consumer contract    │
+                         │ validation           │
+                         └──────────┬───────────┘
                                     │
-                     ┌──────────────┴──────────────┐
-                     │                             │
-                     ▼                             ▼
-            ┌─────────────────┐          ┌─────────────────┐
-            │   CSV Exports   │          │  Data Quality   │
-            │                 │          │     Tests       │
-            └────────┬────────┘          └─────────────────┘
-                     │
-                     ▼
-            ┌─────────────────┐
-            │ Summary Report  │
-            │    (Python)     │
-            └─────────────────┘
+                         ┌──────────┴───────────┐
+                         ▼                      ▼
+             restaurant_kpis.csv       summary_report.md
 ```
 
-The complete platform runs locally inside Docker and does not require external infrastructure or data services.
+### Orchestration
+
+Apache Airflow orchestrates the end-to-end analytics workflow:
+
+```text
+generate_raw_data
+        │
+        ▼
+    dbt_build
+        │
+        ▼
+ generate_report
+```
+
+`dbt_build` acts as the central quality gate.
+
+If a dbt model or data quality test fails, the downstream reporting task is not executed.
+
+### Continuous Integration
+
+GitHub Actions independently validates the project on pull requests:
+
+```text
+Checkout repository
+        │
+        ▼
+Python 3.12
+        │
+        ▼
+Install dependencies
+        │
+        ▼
+Ruff lint
+        │
+        ▼
+Ruff format check
+        │
+        ▼
+Generate synthetic data
+        │
+        ▼
+Full dbt build
+        │
+        ▼
+Models + data tests
+```
 
 ---
 
 ## 🧰 Technology Stack
 
-| Component | Technology |
+| Area | Technology |
 |---|---|
 | Language | Python 3.12 |
-| Transformation | dbt |
-| Analytical engine | DuckDB |
 | Source format | Parquet |
+| Data transformation | dbt |
+| Analytical database | DuckDB |
 | Data processing | pandas / PyArrow |
-| Containerization | Docker |
-| Automation | Make |
+| Orchestration | Apache Airflow |
+| Airflow executor | LocalExecutor |
+| Airflow metadata database | PostgreSQL 16 |
+| Containerization | Docker / Docker Compose |
+| CI | GitHub Actions |
+| Linting / formatting | Ruff |
 | Data quality | dbt tests |
 | Documentation | dbt docs |
-| Output | CSV + Markdown |
+| Outputs | CSV + Markdown |
 
 ---
 
@@ -95,33 +144,24 @@ The complete platform runs locally inside Docker and does not require external i
 ```text
 restaurant-analytics-data-platform/
 │
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── airflow/
+│   └── dags/
+│       └── restaurant_analytics_pipeline.py
+│
 ├── data/
-│   ├── raw/
-│   ├── generated/
-│   └── sample/
+│   └── raw/
 │
 ├── models/
 │   ├── staging/
-│   │   ├── stg_restaurants.sql
-│   │   ├── stg_users.sql
-│   │   ├── stg_bookings.sql
-│   │   └── stg_payments.sql
-│   │
 │   ├── public/
-│   │   ├── pub_restaurants.sql
-│   │   ├── pub_users.sql
-│   │   ├── pub_bookings.sql
-│   │   └── pub_payments.sql
-│   │
 │   ├── marts/
-│   │   └── mart_restaurant_kpis.sql
-│   │
 │   └── schema.yml
 │
 ├── tests/
-│   ├── assert_payment_amounts_non_negative.sql
-│   ├── assert_booking_rates_valid.sql
-│   └── assert_merchant_proceeds_consistent.sql
 │
 ├── scripts/
 │   ├── generate_input_data.py
@@ -133,21 +173,23 @@ restaurant-analytics-data-platform/
 │   └── profiles.yml
 │
 ├── docs/
-│   └── architecture.md
 │
 ├── exports/
 │   ├── cleaned/
 │   ├── marts/
 │   └── reports/
 │
-├── logs/
 ├── .duckdb/
-├── macros/
+├── logs/
+├── target/
 │
 ├── Dockerfile
+├── docker-compose.yaml
 ├── Makefile
-├── requirements.txt
 ├── dbt_project.yml
+├── requirements.txt
+├── requirements-dev.txt
+├── ruff.toml
 └── README.md
 ```
 
@@ -159,31 +201,32 @@ Generated datasets, DuckDB databases, logs, dbt artifacts, and analytical output
 
 ### Requirements
 
-The runtime requirements are:
+For the containerized execution path:
 
 - Docker
+- Docker Compose
 - Make
 
-Clone the repository and enter the project directory:
+Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/kksl-07/restaurant-analytics-data-platform.git
 cd restaurant-analytics-data-platform
 ```
 
-Run the complete pipeline:
+Run the standalone end-to-end pipeline:
 
 ```bash
 make run
 ```
 
-The command builds the Docker image, checks the source data, generates synthetic data when required, runs the dbt project and its tests, exports the analytical datasets, and generates the final summary report.
+The pipeline generates the required source data, executes the dbt project and its tests, and generates the final analytical outputs.
 
 ---
 
 ## 🔄 Pipeline Execution
 
-The end-to-end execution flow is:
+The standalone execution flow is:
 
 ```text
 make run
@@ -194,17 +237,17 @@ Docker build
     ▼
 Check input datasets
     │
-    ├── data exists ──────────────────┐
-    │                                 │
-    └── data missing                  │
-            │                         │
-            ▼                         │
-    generate_input_data.py            │
-            │                         │
-            ▼                         │
-      Parquet datasets                │
-            │                         │
-            └─────────────────────────┘
+    ├── data exists ───────────────┐
+    │                              │
+    └── data missing               │
+            │                      │
+            ▼                      │
+    generate_input_data.py         │
+            │                      │
+            ▼                      │
+      Parquet datasets             │
+            │                      │
+            └──────────────────────┘
                        │
                        ▼
                    dbt build
@@ -212,21 +255,69 @@ Check input datasets
              ┌─────────┼─────────┐
              ▼         ▼         ▼
           staging    public     marts
-                                  │
-                                  ▼
-                         Data quality tests
-                                  │
-                                  ▼
-                              CSV exports
-                                  │
-                                  ▼
-                         generate_report.py
-                                  │
-                                  ▼
-                         summary_report.md
+                       │
+                       ▼
+              data quality tests
+                       │
+                       ▼
+              validated DuckDB mart
+                       │
+                       ▼
+              generate_report.py
+                 │             │
+                 ▼             ▼
+             mart CSV     summary report
 ```
 
-`dbt build` is used instead of separate `dbt run` and `dbt test` commands so that models and tests are executed according to the dbt dependency graph.
+`dbt build` is used instead of separate `dbt run` and `dbt test` commands so models and tests are executed according to the dbt dependency graph.
+
+---
+
+## 🌬️ Airflow Orchestration
+
+The platform also provides an orchestrated execution path using Apache Airflow.
+
+Start the Airflow environment with:
+
+```bash
+docker compose up -d
+```
+
+The main DAG is:
+
+```text
+restaurant_analytics_pipeline
+```
+
+It orchestrates:
+
+```text
+generate_raw_data
+        │
+        ▼
+    dbt_build
+        │
+        ▼
+ generate_report
+```
+
+Airflow uses `LocalExecutor`, while PostgreSQL 16 is used exclusively as the Airflow metadata database.
+
+DuckDB remains the analytical database used by the data platform.
+
+### Quality Gate
+
+The dependency between `dbt_build` and `generate_report` is intentional.
+
+```text
+dbt build
+   │
+   ├── SUCCESS ──→ generate_report
+   │
+   └── FAILURE ──→ pipeline stops
+```
+
+This ensures that downstream reporting artifacts cannot be generated from models that failed transformation or data quality validation.
 
 ---
 
@@ -240,7 +331,7 @@ Synthetic input data can be generated with:
 make generate-data
 ```
 
-The generator creates four source datasets:
+The generator creates:
 
 | Dataset | Description |
 |---|---|
@@ -258,7 +349,7 @@ The default dataset contains:
 500 payments
 ```
 
-A fixed random seed is used so that the generated data is deterministic across executions.
+A fixed random seed is used so the generated data is deterministic across executions.
 
 The generated data intentionally contains a small amount of imperfect data to exercise validation logic in the transformation layer.
 
@@ -266,7 +357,7 @@ The generated data intentionally contains a small amount of imperfect data to ex
 
 ## 🧱 Data Modeling
 
-The dbt project follows three main layers:
+The dbt project follows three analytical layers:
 
 ```text
 raw
@@ -303,8 +394,6 @@ stg_bookings
 stg_payments
 ```
 
----
-
 ### Public Layer
 
 The public layer exposes validated datasets suitable for downstream analytical consumption.
@@ -334,8 +423,6 @@ Cleaned versions of these datasets are exported to:
 exports/cleaned/
 ```
 
----
-
 ### Mart Layer
 
 The final analytical model is:
@@ -352,21 +439,25 @@ one row per active restaurant
 
 It combines restaurant, booking, user, and payment information to expose operational and financial KPIs.
 
-The mart is exported to:
+The mart is materialized in DuckDB and validated as part of `dbt build`.
+
+After the dbt quality gate succeeds, the reporting layer reads the validated mart from DuckDB and publishes it to:
 
 ```text
 exports/marts/restaurant_kpis.csv
 ```
 
+This separation ensures that downstream reporting artifacts are generated only from a mart that has successfully passed transformation and data quality validation.
+
 ---
 
 ## 📊 Booking KPIs
 
-### total_bookings
+### `total_bookings`
 
 Total number of valid bookings associated with the restaurant.
 
-### confirmed_or_fulfilled_bookings
+### `confirmed_or_fulfilled_bookings`
 
 Number of bookings whose current lifecycle status is either:
 
@@ -375,9 +466,9 @@ CONFIRMED
 FULFILLED
 ```
 
-### booking_cancellation_rate
+### `booking_cancellation_rate`
 
-Share of valid bookings whose current lifecycle status is:
+Share of valid bookings for the restaurant whose lifecycle status is:
 
 ```text
 CANCELLED
@@ -385,67 +476,73 @@ CANCELLED
 
 The metric is represented as a ratio between `0` and `1`.
 
-### no_show_rate
+Because the mart grain is one row per restaurant, averaging this column across restaurants produces an unweighted average of restaurant-level cancellation rates rather than the global platform cancellation rate.
 
-Share of valid bookings whose current lifecycle status is:
+### `no_show_rate`
+
+Share of valid bookings for the restaurant whose lifecycle status is:
 
 ```text
 NO_SHOW
 ```
 
-### booked_covers
+The same grain consideration applies when aggregating this rate across restaurants.
+
+### `booked_covers`
 
 Total party size across all valid bookings.
 
-### fulfilled_covers
+### `fulfilled_covers`
 
-Total party size associated only with bookings whose current lifecycle status is:
+Total party size associated with bookings whose lifecycle status is:
 
 ```text
 FULFILLED
 ```
 
-### unique_bookers
+### `unique_bookers`
 
 Number of distinct users associated with valid bookings for the restaurant.
+
+This metric is calculated at restaurant grain and should not be summed across restaurants to derive a platform-wide unique-user count because the same user may book at multiple restaurants.
 
 ---
 
 ## 💳 Payment KPIs
 
-### paid_bookings
+### `paid_bookings`
 
 Number of bookings associated with a `PAID` payment.
 
-### paid_bookings_eur / paid_bookings_gbp
+### `paid_bookings_eur` / `paid_bookings_gbp`
 
-Paid bookings split by the original payment currency.
+Paid bookings split by original payment currency.
 
 ---
 
 ## 💰 Revenue KPIs
 
-### gross_revenue_eur / gross_revenue_gbp
+### `gross_revenue_eur` / `gross_revenue_gbp`
 
 Gross value of `PAID` transactions in their original currency.
 
-### platform_fee_eur / platform_fee_gbp
+### `platform_fee_eur` / `platform_fee_gbp`
 
 Platform fees generated by `PAID` transactions in their original currency.
 
-### total_gross_revenue_in_eur
+### `total_gross_revenue_in_eur`
 
 Total gross value of all `PAID` transactions normalized to EUR using the fixed project FX rate.
 
-### total_gross_revenue_in_gbp
+### `total_gross_revenue_in_gbp`
 
 Total gross value of all `PAID` transactions normalized to GBP using the fixed project FX rate.
 
-### total_platform_fee_in_eur / total_platform_fee_in_gbp
+### `total_platform_fee_in_eur` / `total_platform_fee_in_gbp`
 
-Total platform fees generated by `PAID` transactions, normalized to EUR and GBP.
+Total platform fees generated by `PAID` transactions normalized to EUR and GBP.
 
-### merchant_proceeds_in_eur / merchant_proceeds_in_gbp
+### `merchant_proceeds_in_eur` / `merchant_proceeds_in_gbp`
 
 Amount payable to restaurants after deducting the platform fee from `PAID` transactions, normalized to EUR and GBP.
 
@@ -459,7 +556,7 @@ platform fee
 merchant proceeds
 ```
 
-### avg_paid_booking_value_in_eur / avg_paid_booking_value_in_gbp
+### `avg_paid_booking_value_in_eur` / `avg_paid_booking_value_in_gbp`
 
 Average gross value of a paid booking after normalizing transactions to EUR or GBP.
 
@@ -477,17 +574,13 @@ is_active = true
 
 are exposed by `pub_restaurants` and therefore included in downstream analytics.
 
-**Tradeoff**
-
 Filtering inactive restaurants keeps the analytical mart focused on the currently active restaurant portfolio.
 
-As a consequence, historical activity associated exclusively with restaurants that are now inactive is not represented in the final restaurant KPI mart.
-
----
+The trade-off is that historical activity associated exclusively with restaurants that are now inactive is not represented in the final restaurant KPI mart.
 
 ### Booking Validation
 
-The public booking layer accepts the following lifecycle statuses:
+The public booking layer accepts:
 
 ```text
 CANCELLED
@@ -499,11 +592,9 @@ NO_SHOW
 
 Bookings must also contain valid restaurant and user identifiers and a valid positive party size before being exposed downstream.
 
----
-
 ### Payments Logic
 
-Revenue KPIs only include payments with:
+Revenue KPIs only include payments where:
 
 ```text
 payment_status = 'PAID'
@@ -517,7 +608,7 @@ one payment record per booking
 
 This is an intentional simplification.
 
-In a production payment system, a booking could generate multiple payment events or attempts, for example:
+A real payment system could contain multiple payment attempts and lifecycle events:
 
 ```text
 booking
@@ -528,8 +619,6 @@ booking
 ```
 
 Payment data would therefore need to be resolved to the appropriate analytical grain before joining it with bookings.
-
----
 
 ### Currency Handling
 
@@ -547,13 +636,13 @@ Fixed FX rates are used:
 1 EUR = 0.8547 GBP
 ```
 
-This design intentionally provides:
+This intentionally provides:
 
 - deterministic results
 - reproducible pipeline executions
 - fully offline processing
 
-In a production environment, FX rates would typically be sourced from a dedicated exchange-rate dataset or external provider and applied according to the relevant transaction date.
+In a production environment, FX rates would typically be sourced from a dedicated exchange-rate dataset or external provider and applied according to transaction date.
 
 ---
 
@@ -569,7 +658,7 @@ make test
 
 ### Schema Tests
 
-The project uses standard dbt tests including:
+Standard dbt tests include:
 
 ```text
 not_null
@@ -581,22 +670,18 @@ These validate identifiers, required fields, booking statuses, payment statuses,
 
 ### Business Invariant Tests
 
-The project also contains custom singular tests.
-
 #### Non-negative payment amounts
 
 ```text
 tests/assert_payment_amounts_non_negative.sql
 ```
 
-Validates that:
+Validates:
 
 ```text
 gross_amount >= 0
 platform_fee >= 0
 ```
-
-for payments exposed by the public layer.
 
 #### Valid booking rates
 
@@ -604,7 +689,7 @@ for payments exposed by the public layer.
 tests/assert_booking_rates_valid.sql
 ```
 
-Ensures that:
+Validates:
 
 ```text
 0 <= booking_cancellation_rate <= 1
@@ -617,7 +702,7 @@ Ensures that:
 tests/assert_merchant_proceeds_consistent.sql
 ```
 
-Validates the invariant:
+Validates:
 
 ```text
 gross revenue
@@ -627,17 +712,49 @@ platform fee + merchant proceeds
 
 A small tolerance is allowed because financial metrics are rounded to two decimal places in the analytical mart.
 
-These tests are also executed during:
+These tests are executed as part of `dbt build`.
 
-```bash
-make run
-```
-
-because the end-to-end pipeline uses `dbt build`.
+In the Airflow DAG, `dbt_build` acts as the pipeline quality gate: if a model or data test fails, `generate_report` is not executed.
 
 ---
 
-## 📄 Outputs
+## 📄 Reporting and Consumer Contract
+
+`generate_report.py` acts as a downstream consumer of the validated analytical mart.
+
+It reads:
+
+```text
+main.mart_restaurant_kpis
+```
+
+directly from DuckDB.
+
+Before producing downstream artifacts, the reporting layer validates a minimum required schema through its consumer data contract.
+
+The contract defines the columns required by the reporting consumer without restricting the complete schema exposed by the mart.
+
+Conceptually:
+
+```text
+dbt mart schema
+      │
+      ├── required reporting columns
+      │       ↓
+      │   consumer contract
+      │       ↓
+      │   report generation
+      │
+      └── additional columns
+              ↓
+         preserved in CSV export
+```
+
+If a required column is missing, report generation fails rather than silently producing incomplete output.
+
+---
+
+## 📦 Outputs
 
 A successful execution produces three categories of artifacts.
 
@@ -663,19 +780,17 @@ exports/marts/restaurant_kpis.csv
 exports/reports/summary_report.md
 ```
 
-The summary report contains operational and financial metrics derived from the final analytical mart.
-
 ---
 
 ## 📘 dbt Documentation
 
-Generate and serve the dbt documentation with:
+Generate and serve dbt documentation with:
 
 ```bash
 make docs
 ```
 
-The generated documentation provides:
+dbt documentation provides:
 
 - model lineage
 - DAG visualization
@@ -683,17 +798,13 @@ The generated documentation provides:
 - column descriptions
 - associated data tests
 
-The documentation is served locally on:
-
-```text
-http://localhost:8080
-```
+> Note: verify the local documentation port before running dbt docs alongside the Airflow UI, as both services may otherwise be configured to use the same host port.
 
 ---
 
 ## 🛠️ Make Commands
 
-### Run the complete pipeline
+### Run the complete standalone pipeline
 
 ```bash
 make run
@@ -729,7 +840,7 @@ make clean
 make clean-all
 ```
 
-A full reproducibility test can therefore be performed with:
+A local reproducibility check can therefore begin with:
 
 ```bash
 make clean-all
@@ -738,19 +849,98 @@ make run
 
 ---
 
+## 🔄 Continuous Integration
+
+GitHub Actions validates pull requests targeting `main` and pushes to `main`.
+
+The CI pipeline performs:
+
+```text
+Checkout
+   ↓
+Python 3.12
+   ↓
+Install runtime dependencies
+   ↓
+Install development dependencies
+   ↓
+ruff check .
+   ↓
+ruff format --check .
+   ↓
+generate_input_data.py
+   ↓
+full dbt build
+   ↓
+models + tests
+```
+
+The CI intentionally performs a full `dbt build` instead of state-based selection.
+
+The project is currently small enough that a full build is inexpensive and provides a stronger reproducibility check against a fresh CI environment.
+
+State-based or slim CI execution can be introduced if the project grows enough to justify the additional complexity.
+
+---
+
+## 🌿 Development Workflow
+
+Changes are developed on dedicated branches and integrated into `main` through pull requests.
+
+```text
+main
+  │
+  ▼
+feature / docs branch
+  │
+  ▼
+development
+  │
+  ▼
+local validation
+  │
+  ▼
+pull request
+  │
+  ▼
+GitHub Actions
+  │
+  ▼
+required status checks
+  │
+  ▼
+merge to protected main
+```
+
+The `main` branch is protected by a GitHub ruleset.
+
+The workflow requires the CI quality gate to pass before changes can be merged and protects the branch against unsafe history changes.
+
+---
+
 ## ⚙️ Execution Model
 
-The platform is designed to be:
+The platform provides two local execution paths.
 
-- deterministic
-- reproducible
-- containerized
-- fully local
-- independent from external data services
+### Standalone Execution
 
-Docker provides the execution environment while DuckDB acts as the local analytical engine.
+The Make/Docker workflow provides a lightweight way to execute the complete analytics pipeline without manually installing project runtime dependencies on the host.
 
-This makes it possible to reproduce the complete pipeline without installing dbt, DuckDB, or project-specific Python dependencies directly on the host machine.
+### Orchestrated Execution
+
+Apache Airflow runs locally through Docker Compose and orchestrates the same analytics workflow.
+
+Airflow uses:
+
+```text
+LocalExecutor
+PostgreSQL 16 → Airflow metadata
+DuckDB       → analytical data
+```
+
+Keeping the orchestration metadata database separate from the analytical database makes the responsibilities of the two systems explicit.
+
+The current implementation prioritizes portability, reproducibility, and architectural clarity over distributed execution.
 
 ---
 
@@ -764,15 +954,27 @@ For a production-scale platform, the analytical engine could be replaced by a cl
 
 ### Parquet Sources
 
-Parquet provides a columnar input format suitable for analytical workloads and can be queried directly by DuckDB.
+Parquet provides a columnar input format suitable for analytical workloads and can be queried efficiently by DuckDB.
 
-In a production environment, source data could instead arrive from object storage, operational databases, APIs, streaming systems, or ingestion services.
+Production sources could instead arrive from object storage, operational databases, APIs, streaming systems, or ingestion services.
+
+### Airflow LocalExecutor
+
+LocalExecutor is sufficient for the current workload and keeps the local architecture simple.
+
+Distributed workers, Celery, Redis, or Kubernetes-based task execution would add operational complexity without providing meaningful value at the current project scale.
+
+### dbt Build as a Quality Gate
+
+`dbt build` combines transformation and validation according to the dbt dependency graph.
+
+The reporting layer is downstream of this gate and therefore cannot execute successfully when the analytical models fail validation.
 
 ### Fixed FX Rates
 
 Static exchange rates improve reproducibility but do not model historical currency movements.
 
-A production implementation would maintain an FX-rate dimension and resolve the appropriate rate according to the transaction date.
+A production implementation would maintain an FX-rate dataset and resolve the appropriate rate according to transaction date.
 
 ### Single Payment per Booking
 
@@ -788,36 +990,54 @@ The transformation and orchestration patterns can be extended toward cloud infra
 
 ---
 
-## 🔮 Possible Extensions
+## 🔮 Future Roadmap
 
-Potential next steps include:
+The Data Platform Core intentionally stops at a stable local analytics platform rather than continuously adding infrastructure.
 
-- Airflow orchestration
-- incremental dbt models
+Potential platform extensions include:
+
+- incremental dbt models and state-based execution
 - source freshness checks
-- CI/CD with GitHub Actions
-- automated linting
-- data contracts
 - richer synthetic data volumes
 - payment event modeling
-- historical FX rates
+- historical FX-rate modeling
+- data observability and alerting
 - cloud object storage
 - cloud data warehouse deployment
-- observability and alerting
+- isolated or distributed Airflow task execution
+
+Before extending the platform with an AI layer, the next development phase focuses on a separate **Software Engineering learning roadmap**.
+
+Potential later AI extensions include:
+
+```text
+dbt metadata / documentation
+          ↓
+      retrieval / RAG
+          ↓
+      Text-to-SQL
+          ↓
+Analytics Data Agent
+```
+
+These extensions are intentionally outside the scope of the current Data Platform Core.
 
 ---
 
 ## 🎯 Project Goals
 
-This project focuses on demonstrating:
+This project demonstrates:
 
 - layered analytical data modeling
 - reproducible data pipelines
-- containerized execution
+- workflow orchestration
+- containerized local execution
 - data quality engineering
+- CI-based quality gates
 - explicit business rules
 - analytical grain management
 - financial metric reconciliation
+- consumer-side schema contracts
 - documentation and lineage
 - engineering trade-off analysis
 
