@@ -6,6 +6,12 @@ The project simulates a restaurant marketplace analytics workflow, from determin
 
 The platform is intentionally small and self-contained. Its purpose is to demonstrate production-oriented Data Engineering practices without introducing infrastructure that is not required by the workload.
 
+## Codex development guidance
+
+Developers using Codex should follow the repository instructions in
+[`AGENTS.md`](AGENTS.md). It defines the architectural boundaries, validation
+expectations, safe local commands, and review practices for changes.
+
 The core design focuses on:
 
 - layered analytical modeling with dbt
