@@ -49,3 +49,4 @@ exports/reports/*
 *.tmp
 *.temp
 *.swp
+dbt_internal_packages/
