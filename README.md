@@ -213,6 +213,15 @@ For the containerized execution path:
 - Docker Compose
 - Make
 
+### dbt Runtime
+
+The project is tested with dbt 2.0.11. Verify the installed dbt CLI version
+with:
+
+```bash
+dbt --version
+```
+
 Clone the repository:
 
 ```bash
@@ -287,6 +296,16 @@ Start the Airflow environment with:
 
 ```bash
 docker compose up -d
+```
+
+After changing dependencies, ensure PostgreSQL and the Airflow metadata
+initialization service are already available, then rebuild and recreate only
+the Airflow services so they use the updated runtime without restarting
+PostgreSQL:
+
+```bash
+docker compose up -d --build --no-deps --force-recreate \
+  airflow-api-server airflow-scheduler airflow-dag-processor
 ```
 
 The main DAG is:
