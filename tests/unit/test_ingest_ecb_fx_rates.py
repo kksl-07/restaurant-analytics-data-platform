@@ -77,6 +77,42 @@ def test_explicit_date_range_is_used_for_replay(fx_module, tmp_path):
     assert captured == [(date(2024, 3, 1), date(2024, 3, 31))]
 
 
+def test_easter_2024_non_publication_gap_preserves_distinct_equal_rates(
+    fx_module, tmp_path, monkeypatch
+):
+    """Keep equal ECB rates distinct across the Easter non-publication gap."""
+    config = fx_module.IngestionConfig(
+        destination=tmp_path / "easter_fx_rates.parquet",
+        start_date=date(2024, 3, 28),
+        end_date=date(2024, 4, 2),
+    )
+    payload = csv_data([("2024-03-28", "0.8551"), ("2024-04-02", "0.8551")])
+
+    assert fx_module.ingest(config, fetcher=lambda start, end: payload) is True
+    table = pq.read_table(config.destination)
+    rows = read_rows(config.destination)
+
+    assert table.schema.equals(fx_module.FX_SCHEMA, check_metadata=False)
+    assert [(row["rate_date"], row["quote_currency"]) for row in rows] == [
+        (date(2024, 3, 28), "GBP"),
+        (date(2024, 4, 2), "GBP"),
+    ]
+    assert {row["quote_per_eur"] for row in rows} == {Decimal("0.8551000000")}
+    assert {
+        date(2024, 3, 29),
+        date(2024, 3, 30),
+        date(2024, 3, 31),
+        date(2024, 4, 1),
+    }.isdisjoint({row["rate_date"] for row in rows})
+
+    monkeypatch.setattr(
+        fx_module,
+        "atomic_write",
+        lambda destination, table: pytest.fail("identical replay must not persist"),
+    )
+    assert fx_module.ingest(config, fetcher=lambda start, end: payload) is False
+
+
 def test_incremental_window_has_seven_day_inclusive_overlap(fx_module, config):
     fx_module.ingest(
         config, fetcher=lambda start, end: csv_data([("2024-01-10", "0.8500000000")])
