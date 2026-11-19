@@ -348,7 +348,9 @@ This ensures that downstream reporting artifacts cannot be generated from models
 
 ## 🧪 Synthetic Data
 
-The project does not require external datasets.
+The core analytics pipeline uses deterministic synthetic restaurant, user,
+booking, and payment inputs. ECB FX ingestion is an optional, separately run
+external-source workflow and is not part of `make run` or `make test`.
 
 Synthetic input data can be generated with:
 
@@ -377,6 +379,79 @@ The default dataset contains:
 A fixed random seed is used so the generated data is deterministic across executions.
 
 The generated data intentionally contains a small amount of imperfect data to exercise validation logic in the transformation layer.
+
+### ECB Reference FX Rates
+
+`scripts/ingest_ecb_fx_rates.py` optionally retrieves the official daily ECB
+GBP/EUR reference-rate series from:
+
+```text
+https://data-api.ecb.europa.eu/service/data/EXR/D.GBP.EUR.SP00.A
+```
+
+The direction is **GBP per 1 EUR**. It writes the generated raw snapshot to:
+
+```text
+data/raw/ecb_fx_rates.parquet
+```
+
+Its grain and business key are both:
+
+```text
+(rate_date, quote_currency)
+```
+
+The explicit Parquet contract is:
+
+| Column | Type |
+|---|---|
+| `rate_date` | `date32` |
+| `base_currency` | `string` (`EUR`) |
+| `quote_currency` | `string` (`GBP`) |
+| `quote_per_eur` | `decimal128(20,10)` |
+| `source` | `string` (`ECB`) |
+| `series_key` | `string` (`EXR.D.GBP.EUR.SP00.A`) |
+
+The first run backfills from `2024-01-01`. Later runs re-fetch the latest
+persisted rate date and the preceding six calendar days (a seven-calendar-day,
+inclusive overlap) so recent ECB revisions can replace matching observations.
+An explicit replay updates only the requested date interval while preserving
+other persisted dates:
+
+```bash
+make ingest-ecb-fx ARGS="--start-date 2024-03-01 --end-date 2024-03-31"
+```
+
+The ingestion validates source and existing data before an idempotent upsert.
+It writes a validated temporary Parquet file in the destination directory and
+atomically replaces the snapshot only on success. HTTP timeouts, bounded
+retries, malformed responses, and contradictory missing observations fail
+without replacing a valid snapshot. ECB non-publication days are never filled.
+
+Run the default backfill or incremental update with:
+
+```bash
+make ingest-ecb-fx
+```
+
+For a manual live smoke test that leaves the main dataset untouched, use a
+temporary destination:
+
+```bash
+python scripts/ingest_ecb_fx_rates.py \
+  --destination /tmp/ecb_fx_rates_smoke.parquet \
+  --start-date 2024-01-02 --end-date 2024-01-05
+```
+
+Unit tests mock all HTTP calls and run offline with:
+
+```bash
+python -m pytest tests/unit/ -v
+```
+
+ECB reference rates are benchmark daily rates, not payment execution or
+settlement rates. This phase does not alter existing fixed-FX KPI calculations,
+dbt models, or the Airflow DAG.
 
 ---
 
@@ -669,6 +744,10 @@ This intentionally provides:
 
 In a production environment, FX rates would typically be sourced from a dedicated exchange-rate dataset or external provider and applied according to transaction date.
 
+The ECB ingestion dataset described above is available for later modeling work,
+but is intentionally not connected to these existing KPI calculations in this
+phase.
+
 ---
 
 ## 🧪 Data Quality
@@ -841,6 +920,18 @@ make run
 make generate-data
 ```
 
+### Ingest ECB FX rates
+
+```bash
+make ingest-ecb-fx
+```
+
+Forward ingestion options through `ARGS`, for example:
+
+```bash
+make ingest-ecb-fx ARGS="--start-date 2024-03-01 --end-date 2024-03-31"
+```
+
 ### Run tests
 
 ```bash
@@ -864,6 +955,9 @@ make clean
 ```bash
 make clean-all
 ```
+
+`make clean-all` removes every `data/raw/*.parquet` file, including the
+generated `ecb_fx_rates.parquet` snapshot.
 
 A local reproducibility check can therefore begin with:
 
@@ -892,6 +986,8 @@ Install development dependencies
 ruff check .
    ↓
 ruff format --check .
+   ↓
+offline pytest ingestion tests
    ↓
 generate_input_data.py
    ↓

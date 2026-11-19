@@ -41,6 +41,9 @@ jobs:
       - name: Check Ruff formatting
         run: ruff format --check .
 
+      - name: Run offline unit tests
+        run: python -m pytest tests/unit/ -v
+
       - name: Generate synthetic input data
         run: python scripts/generate_input_data.py
 
