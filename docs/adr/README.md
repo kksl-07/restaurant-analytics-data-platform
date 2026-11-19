@@ -63,3 +63,4 @@ This preserves the architectural history of the project.
 | [ADR-002](./002-use-localexecutor-for-local-orchestration.md) | Use LocalExecutor for local orchestration | Accepted |
 | [ADR-003](./003-use-custom-airflow-runtime-image.md) | Use a custom Airflow runtime image | Accepted |
 | [ADR-004](./004-use-postgresql-for-airflow-metadata.md) | Use PostgreSQL for Airflow metadata | Accepted |
+| [ADR-005](./005-use-ecb-reference-rates.md) | Use ECB reference rates for local FX ingestion | Accepted |

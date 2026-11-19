@@ -100,6 +100,38 @@ The generator also introduces a small amount of intentionally imperfect
 data so that validation behavior can be exercised by the transformation
 layer.
 
+### ECB FX Ingestion
+
+The optional `scripts/ingest_ecb_fx_rates.py` workflow retrieves the official
+ECB `EXR/D.GBP.EUR.SP00.A` daily reference series. Its rate direction is GBP
+per 1 EUR. It persists `data/raw/ecb_fx_rates.parquet` at grain and business
+key `(rate_date, quote_currency)` with an explicit Arrow schema:
+
+```text
+rate_date        date32
+base_currency    string (EUR)
+quote_currency   string (GBP)
+quote_per_eur    decimal128(20,10)
+source           string (ECB)
+series_key       string (EXR.D.GBP.EUR.SP00.A)
+```
+
+An initial execution backfills from 2024-01-01. Incremental runs re-fetch an
+inclusive seven-calendar-day interval ending at the latest persisted rate date
+to incorporate revisions; explicit date bounds provide historical replay.
+Incoming records replace the same business key, while unaffected history is
+preserved. The resulting snapshot is sorted, validated, written to a temporary
+file, and atomically replaced. Failures leave the prior valid dataset intact.
+
+The client applies explicit timeouts and bounded retries, validates ECB source
+metadata and response shape, and treats genuine non-publication days as empty
+windows without manufacturing observations. Unit tests mock ECB HTTP calls, so
+CI remains offline.
+
+This raw dataset is not yet a dbt source and does not change fixed FX KPIs,
+reporting contracts, or Airflow orchestration. ECB reference rates also are not
+equivalent to payment settlement or execution rates.
+
 ---
 
 ### 2. Transformation Layer
@@ -429,6 +461,9 @@ Ruff lint
 Ruff format check
    │
    ▼
+Offline ECB ingestion tests
+   │
+   ▼
 Generate synthetic data
    │
    ▼
@@ -528,7 +563,6 @@ The Data Platform Core intentionally does not implement:
 - real-time streaming
 - incremental dbt execution
 - production observability and alerting
-- historical FX-rate ingestion
 - complex payment-event modeling
 - AI or agent functionality
 

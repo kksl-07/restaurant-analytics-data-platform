@@ -16,7 +16,7 @@ DATA_FILES := \
 	data/raw/bookings.parquet \
 	data/raw/payments.parquet
 
-.PHONY: build run test generate-data clean clean-all docs docs-generate docs-serve check-data
+.PHONY: build run test generate-data ingest-ecb-fx clean clean-all docs docs-generate docs-serve check-data
 
 
 # =========================
@@ -58,6 +58,13 @@ generate-data: build
 		-v "$$(pwd)/data:$(APP_DIR)/data" \
 		$(IMAGE_NAME) \
 		python $(APP_DIR)/scripts/generate_input_data.py
+
+
+ingest-ecb-fx: build
+	docker run --rm \
+		-v "$$(pwd)/data:$(APP_DIR)/data" \
+		$(IMAGE_NAME) \
+		python $(APP_DIR)/scripts/ingest_ecb_fx_rates.py $(ARGS)
 
 
 # =========================
